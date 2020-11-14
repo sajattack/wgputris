@@ -219,15 +219,13 @@ impl Gameboard {
     /// # Return Value
     ///
     /// A representation of the Gameboard as vertices which can be drawn.
-    pub fn as_vertices(&self) -> [Vertex; 1200] {
-        use bytemuck::Zeroable;
-        let mut ret = [Vertex::zeroed(); 1200];
+    pub fn as_vertices(&self, buf: &mut [Vertex]) {
         for (index, block) in self.blocks.iter().enumerate() {
             let (x, y) = self.index_to_point(index);
             let index = index * 6;
             if block.is_some() {
                 let color = block.unwrap();
-                ret[index] = Vertex {
+                buf[index] = Vertex {
                     tex_coords: [0.0, 0.0],
                     color,
                     position: [
@@ -236,7 +234,7 @@ impl Gameboard {
                         0.0,
                     ]
                 };
-                ret[index+1] = Vertex {
+                buf[index+1] = Vertex {
                     tex_coords: [1.0, 0.0],
                     color,
                     position: [
@@ -245,7 +243,7 @@ impl Gameboard {
                         0.0,
                     ]
                 };
-                ret[index+2] = Vertex {
+                buf[index+2] = Vertex {
                     tex_coords: [1.0, 1.0],
                     color,
                     position: [
@@ -254,7 +252,7 @@ impl Gameboard {
                         0.0,
                     ]
                 };
-                ret[index+3] = Vertex {
+                buf[index+3] = Vertex {
                     tex_coords: [1.0, 1.0],
                     color,
                     position: [
@@ -263,7 +261,7 @@ impl Gameboard {
                         0.0,
                     ]
                 };
-                ret[index+4] = Vertex {
+                buf[index+4] = Vertex {
                     tex_coords: [0.0, 1.0],
                     color,
                     position: [
@@ -272,7 +270,7 @@ impl Gameboard {
                         0.0,
                     ]
                 };
-                ret[index+5] = Vertex {
+                buf[index+5] = Vertex {
                     tex_coords: [0.0, 0.0],
                     color,
                     position: [
@@ -283,6 +281,5 @@ impl Gameboard {
                 };
             }
         }
-        ret
     }
 }

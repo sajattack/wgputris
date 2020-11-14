@@ -259,86 +259,71 @@ impl Game {
         while self.attempt_move(0, 1) {}
     }
 
-    fn render_background() -> [Vertex; 6] {
-        [
-            Vertex {
-                position: [
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32,
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32,
-                    -1.0,
-                ],
-                tex_coords: [0.0, 0.0],
-                color: [0.20, 0.20, 0.20, 0.5],
-            },
-            Vertex {
-                position: [
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32,
-                    -1.0,
-                ],
-                tex_coords: [GAMEBOARD_WIDTH as f32, 0.0],
-                color: [0.20, 0.20, 0.20, 0.5],
-            },
-            Vertex {
-                position: [
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
-                    -1.0,
-                ],
-                tex_coords: [GAMEBOARD_WIDTH as f32, GAMEBOARD_HEIGHT as f32],
-                color: [0.20, 0.20, 0.20, 0.5],
-            },
-            Vertex {
-                position: [
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
-                    -1.0,
-                ],
-                tex_coords: [GAMEBOARD_WIDTH as f32, GAMEBOARD_HEIGHT as f32],
-                color: [0.20, 0.20, 0.20, 0.5],
-            },
-            Vertex {
-                position: [
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32,
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
-                    -1.0,
-                ],
-                tex_coords: [0.0, GAMEBOARD_HEIGHT as f32],
-                color: [0.20, 0.20, 0.20, 0.5],
-            },
-            Vertex {
-                position: [
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32,
-                    BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32,
-                    -1.0,
-                ],
-                tex_coords: [0.0, 0.0],
-                color: [0.20, 0.20, 0.20, 0.5],
-            },
-        ]
+    fn render_background(&self, buf: &mut [Vertex]) {
+        buf[0] = Vertex {
+            position: [
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32,
+                -1.0,
+            ],
+            tex_coords: [0.0, 0.0],
+            color: [0.20, 0.20, 0.20, 0.5],
+        };
+        buf[1] = Vertex {
+            position: [
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32,
+                -1.0,
+            ],
+            tex_coords: [GAMEBOARD_WIDTH as f32, 0.0],
+            color: [0.20, 0.20, 0.20, 0.5],
+        };
+        buf[2] = Vertex {
+            position: [
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
+                -1.0,
+            ],
+            tex_coords: [GAMEBOARD_WIDTH as f32, GAMEBOARD_HEIGHT as f32],
+            color: [0.20, 0.20, 0.20, 0.5],
+        };
+        buf[3] = Vertex {
+            position: [
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
+                -1.0,
+            ],
+            tex_coords: [GAMEBOARD_WIDTH as f32, GAMEBOARD_HEIGHT as f32],
+            color: [0.20, 0.20, 0.20, 0.5],
+        };
+        buf[4] = Vertex {
+            position: [
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
+                -1.0,
+            ],
+            tex_coords: [0.0, GAMEBOARD_HEIGHT as f32],
+            color: [0.20, 0.20, 0.20, 0.5],
+        };
+        buf[5] = Vertex {
+            position: [
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32,
+                -1.0,
+            ],
+            tex_coords: [0.0, 0.0],
+            color: [0.20, 0.20, 0.20, 0.5],
+        };
     }
 
     /// Returns renderable vertices to the main graphics api
     pub fn render(
         &self,
-    ) -> [Vertex; 1254] {
-        use core::mem::MaybeUninit;
-        use core::mem::transmute;
-
-        // Using unsafe for uninit so we don't have to zero 40KB every frame
-        unsafe {
-            let mut vertex_buffer: [MaybeUninit<Vertex>;1254] = MaybeUninit::uninit().assume_init();
-            vertex_buffer[0..6].copy_from_slice(&transmute::<[Vertex; 6], [MaybeUninit<Vertex>; 6]>(Self::render_background()));
-            vertex_buffer[6..1206].copy_from_slice(transmute::<&[Vertex; 1200], &[MaybeUninit<Vertex>; 1200]>(&self.board.as_vertices()));
-            vertex_buffer[1206..1230].copy_from_slice(transmute::<&[Vertex; 24], &[MaybeUninit<Vertex>; 24]>(&self.current_shape.as_vertices()));
-            vertex_buffer[1230..1254].copy_from_slice(transmute::<&[Vertex; 24], &[MaybeUninit<Vertex>; 24]>(&self.next_shape.as_vertices()));
-            let vertex_buffer = transmute::<[MaybeUninit<Vertex>; 1254], [Vertex; 1254]>(vertex_buffer);
-            vertex_buffer
-        }
-
-        //graphics::draw_vertices(vertex_buffer, texture_buffer, BLOCK_SIZE, BLOCK_SIZE, 0.75, 0.75);       
-        //let score_string = alloc::format!("Score: {}", self.score);
-        //graphics::draw_text_at(327, 40, 0xffff_ffff, score_string.as_str());
-        //graphics::draw_text_at(327, 60, 0xffff_ffff, "Next Shape:");
+        buf: &mut [Vertex],
+    ) {
+            self.render_background(&mut buf[0..6]);
+            self.board.as_vertices(&mut buf[6..1206]);
+            self.current_shape.as_vertices(&mut buf[1206..1230]);
+            self.next_shape.as_vertices(&mut buf[1230..1254]);
     }
 }

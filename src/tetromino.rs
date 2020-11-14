@@ -4,7 +4,6 @@ use crate::GAMEBOARD_OFFSET;
 use crate::Vertex;
 
 use rand::prelude::*;
-use bytemuck::Zeroable;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Tetromino {
@@ -167,42 +166,40 @@ impl Tetromino {
         ]
     }
 
-    pub fn as_vertices(&self) -> [Vertex; 24] {
-        let mut ret: [Vertex; 24] = [Vertex::zeroed(); 24];
+    pub fn as_vertices(&self, buf: &mut [Vertex]) {
         self.as_blocks().iter().flat_map(|b| {
-                Some(Vertex {
-                    position: [b.x, b.y, 0.0],
-                    tex_coords: [0.0, 0.0],
-                    color: self.color,
-                }).into_iter().chain(Some(
+            Some(Vertex {
+                position: [b.x, b.y, 0.0],
+                tex_coords: [0.0, 0.0],
+                color: self.color,
+            }).into_iter().chain(Some(
+            Vertex {
+                position: [b.x + BLOCK_SIZE as f32, b.y, 0.0],
+                tex_coords: [1.0, 0.0],
+                color: self.color
+            })).into_iter().chain(Some(
+            Vertex {
+                position: [b.x + BLOCK_SIZE as f32, b.y + BLOCK_SIZE as f32, 0.0],
+                tex_coords: [1.0, 1.0],
+                color: self.color
+            })).into_iter().chain(Some(
+            Vertex {
+                position: [b.x + BLOCK_SIZE as f32, b.y + BLOCK_SIZE as f32, 0.0],
+                tex_coords: [1.0, 1.0],
+                color: self.color
+            })).into_iter().chain(Some(
+            Vertex {
+                position: [b.x, b.y + BLOCK_SIZE as f32, 0.0],
+                tex_coords: [0.0, 1.0],
+                color: self.color
+            })).into_iter().chain(Some(
                 Vertex {
-                    position: [b.x + BLOCK_SIZE as f32, b.y, 0.0],
-                    tex_coords: [1.0, 0.0],
-                    color: self.color
-                })).into_iter().chain(Some(
-                Vertex {
-                    position: [b.x + BLOCK_SIZE as f32, b.y + BLOCK_SIZE as f32, 0.0],
-                    tex_coords: [1.0, 1.0],
-                    color: self.color
-                })).into_iter().chain(Some(
-                Vertex {
-                    position: [b.x + BLOCK_SIZE as f32, b.y + BLOCK_SIZE as f32, 0.0],
-                    tex_coords: [1.0, 1.0],
-                    color: self.color
-                })).into_iter().chain(Some(
-                Vertex {
-                    position: [b.x, b.y + BLOCK_SIZE as f32, 0.0],
-                    tex_coords: [0.0, 1.0],
-                    color: self.color
-                })).into_iter().chain(Some(
-                 Vertex {
-                    position: [b.x, b.y, 0.0],
-                    tex_coords: [0.0, 0.0],
-                    color: self.color,
-                }))})
-            .zip(ret.iter_mut())
-            .for_each(|(v, dst)| *dst = v);
-        ret
+                position: [b.x, b.y, 0.0],
+                tex_coords: [0.0, 0.0],
+                color: self.color,
+            }))})
+        .zip(buf.iter_mut())
+        .for_each(|(v, dst)| *dst = v);
     }
 
     /// Sets the position of a `Tetromino`. 

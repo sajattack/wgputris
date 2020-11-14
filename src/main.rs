@@ -9,6 +9,8 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+use bytemuck::Zeroable;
+
 mod texture;
 mod gameboard;
 mod game;
@@ -88,11 +90,13 @@ struct State {
     device: wgpu::Device,
     queue: wgpu::Queue,
     swap_chain: wgpu::SwapChain,
-    sc_desc: wgpu::SwapChainDescriptor,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
+    vertices: [Vertex; 1254],
     uniform_bind_group: wgpu::BindGroup,
     diffuse_bind_group: wgpu::BindGroup,
+    glyph_brush: wgpu_glyph::GlyphBrush<()>,
+    staging_belt: wgpu::util::StagingBelt,
     game: game::Game,
 }
 
@@ -174,7 +178,6 @@ impl State {
             }
         );
 
-        use bytemuck::Zeroable;
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
@@ -279,17 +282,27 @@ impl State {
             alpha_to_coverage_enabled: false,
         });
 
+        let staging_belt = wgpu::util::StagingBelt::new(1024);
+        let font = ab_glyph::FontArc::try_from_slice(include_bytes!("../assets/RedOctober.ttf")).expect("Load font");
+
+        let glyph_brush = GlyphBrushBuilder::using_font(font)
+            .build(&device, sc_desc.format);
+
+        let vertices: [Vertex; 1254] = [Vertex::zeroed();1254];
+
         let game = game::Game::new();
 
         Self {
             device,
             queue,
             swap_chain,
-            sc_desc,
             render_pipeline,
             vertex_buffer,
+            vertices,
             uniform_bind_group,
             diffuse_bind_group,
+            glyph_brush,
+            staging_belt,
             game,
         }
     }
@@ -338,18 +351,12 @@ impl State {
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
 
-            let vertices = self.game.render();
-            self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertices));
+            self.game.render(&mut self.vertices);
+            self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.draw(0..vertices.len() as u32, 0..1);
+            render_pass.draw(0..self.vertices.len() as u32, 0..1);
 
         }
-            let mut staging_belt = wgpu::util::StagingBelt::new(1024);
-            let font = ab_glyph::FontArc::try_from_slice(include_bytes!("../assets/RedOctober.ttf")).expect("Load font");
-
-            let mut glyph_brush = GlyphBrushBuilder::using_font(font)
-                .build(&self.device, self.sc_desc.format);
-
             let score_string = format!("Score: {}", self.game.get_score());
             let score_text = Section {
                 screen_position: (680.0, 80.0),
@@ -357,7 +364,7 @@ impl State {
                 ..Section::default()
             };
 
-            glyph_brush.queue(score_text);
+            self.glyph_brush.queue(score_text);
 
             let next_shape_text = Section {
                 screen_position: (680.0, 120.0),
@@ -366,18 +373,18 @@ impl State {
                 ..Section::default()
             };
 
-            glyph_brush.queue(next_shape_text);
+            self.glyph_brush.queue(next_shape_text);
 
-            glyph_brush.draw_queued(
+            self.glyph_brush.draw_queued(
                 &self.device,
-                &mut staging_belt,
+                &mut self.staging_belt,
                 &mut encoder,
                 &frame.view,
                 960,
                 544
             ).expect("Draw queued");
 
-            staging_belt.finish();
+            self.staging_belt.finish();
             self.queue.submit(std::iter::once(encoder.finish()));
     }
 }
