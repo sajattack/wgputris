@@ -279,6 +279,9 @@ impl Gameboard {
                         0.0,
                     ]
                 };
+            } else {
+                use bytemuck::Zeroable;
+                buf[index..index+6].copy_from_slice(&[Vertex::zeroed(); 6]);
             }
         }
     }
