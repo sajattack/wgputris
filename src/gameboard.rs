@@ -1,19 +1,19 @@
 use crate::Vertex;
 use crate::BLOCK_SIZE;
-use crate::{GAMEBOARD_OFFSET, GAMEBOARD_WIDTH, GAMEBOARD_HEIGHT};
+use crate::{GAMEBOARD_HEIGHT, GAMEBOARD_OFFSET, GAMEBOARD_WIDTH};
 use std::vec::Vec;
 
 /// The playing field of tetris.
 #[derive(Debug)]
 pub struct Gameboard {
-    blocks: [Option<[f32;4]>; 200],
+    blocks: [Option<[f32; 4]>; 200],
     width: usize,
     height: usize,
     block_spawn_loc: (usize, usize),
 }
 
 impl Gameboard {
-    /// Creates a new `Gameboard`. 
+    /// Creates a new `Gameboard`.
     pub fn new() -> Self {
         Self {
             blocks: [None; 200],
@@ -38,7 +38,7 @@ impl Gameboard {
         (x, y)
     }
 
-    /// Gets the colour of the block at position (x, y), 
+    /// Gets the colour of the block at position (x, y),
     /// or None if the position is empty.
     ///
     /// # Parameters
@@ -47,26 +47,26 @@ impl Gameboard {
     /// `y`: Vertical position within the gameboard
     ///
     /// # Return Value
-    /// The colour of the block at position (x, y), 
+    /// The colour of the block at position (x, y),
     /// or None if the position is empty.
-    pub fn get_content(&self, x: usize, y: usize) -> Option<[f32;4]> {
+    pub fn get_content(&self, x: usize, y: usize) -> Option<[f32; 4]> {
         self.blocks[self.point_to_index(x, y)?]
     }
 
-    /// Sets the colour of the block at position (x, y), 
+    /// Sets the colour of the block at position (x, y),
     /// or None if the position is empty.
     ///
     /// # Parameters
     ///
     /// - `x`: Horizontal position within the gameboard
     /// - `y`: Vertical position within the gameboard
-    /// - `content`: Colour of the block at position (x, y), or None if the position is 
+    /// - `content`: Colour of the block at position (x, y), or None if the position is
     /// empty.
     ///
     /// # Return Value
     ///
     /// Ok(()) if the position is valid, Err(()) otherwise.
-    pub fn set_content(&mut self, x: usize, y: usize, content: Option<[f32;4]>) -> Result<(), ()>{
+    pub fn set_content(&mut self, x: usize, y: usize, content: Option<[f32; 4]>) -> Result<(), ()> {
         self.blocks[self.point_to_index(x, y).ok_or(())?] = content;
         Ok(())
     }
@@ -78,12 +78,12 @@ impl Gameboard {
     /// - `locs`: `Vec` of position tuples to check.
     ///
     /// # Return Value
-    /// 
+    ///
     /// `true` if all block positions are empty, `false` otherwise.
     pub fn are_locs_empty(&self, locs: Vec<(usize, usize)>) -> bool {
         for point in locs {
             if self.get_content(point.0, point.1).is_some() {
-                return false
+                return false;
             }
         }
         true
@@ -106,23 +106,25 @@ impl Gameboard {
     ///
     /// The position within the `Gameboard` at which new blocks are spawned.
     pub fn get_spawn_loc(&self) -> (usize, usize) {
-        (self.block_spawn_loc.0 + GAMEBOARD_OFFSET.0, self.block_spawn_loc.1 + GAMEBOARD_OFFSET.1)
+        (
+            self.block_spawn_loc.0 + GAMEBOARD_OFFSET.0,
+            self.block_spawn_loc.1 + GAMEBOARD_OFFSET.1,
+        )
     }
 
-
     /// Returns `true` if the given `row_index` is horizontally full.
-    /// 
+    ///
     /// # Parameters
     ///
     /// - `row_index`: The index of the row to check, from 0 to `GAMEBOARD_HEIGHT-1`
     ///
     /// # Return Value
-    /// 
+    ///
     /// `true` if the row is horizontally full, `false` otherwise.
     pub fn is_row_completed(&self, row_index: usize) -> bool {
         for x in 0..self.width {
             if self.get_content(x, row_index).is_none() {
-                return false
+                return false;
             }
         }
         true
@@ -151,11 +153,11 @@ impl Gameboard {
     ///
     /// # Return Value
     ///
-    /// Ok(()) if the row index is valid and the operation is successful, Err(()) 
+    /// Ok(()) if the row index is valid and the operation is successful, Err(())
     /// otherwise.
     pub fn remove_row(&mut self, row_index: usize) -> Result<(), ()> {
         for y in (1..=row_index).rev() {
-           self.copy_row_into_row(y-1, y)?; 
+            self.copy_row_into_row(y - 1, y)?;
         }
         self.fill_row(0, None)?;
         Ok(())
@@ -169,7 +171,7 @@ impl Gameboard {
     ///
     /// # Return Value
     ///
-    /// Ok(()) if the row indices are valid and the operation is successful, Err(()) 
+    /// Ok(()) if the row indices are valid and the operation is successful, Err(())
     /// otherwise.
     pub fn remove_rows(&mut self, row_indices: &Vec<usize>) -> Result<(), ()> {
         for index in row_indices {
@@ -180,7 +182,7 @@ impl Gameboard {
 
     /// Fills a row with blocks of the given colour, or empties it if `content` is None.
     ///
-    /// # Parameters 
+    /// # Parameters
     ///
     /// - `row_index`: Index of the row to fill, from 0 to `GAMEBOARD_HEIGHT-1`.
     /// - `content`: Colour of the block to fill with, or None to empty.
@@ -188,17 +190,17 @@ impl Gameboard {
     /// # Return value
     ///
     /// Ok(()) if row_index is valid, Err(()) otherwise.
-    pub fn fill_row(&mut self, row_index: usize, content: Option<[f32;4]>) -> Result<(), ()> {
+    pub fn fill_row(&mut self, row_index: usize, content: Option<[f32; 4]>) -> Result<(), ()> {
         for x in 0..self.width {
             self.set_content(x, row_index, content.clone())?;
         }
         Ok(())
     }
 
-    /// Copies a row into another row. 
+    /// Copies a row into another row.
     /// Used to move rows above down when a row is completed.
     ///
-    /// # Parameters: 
+    /// # Parameters:
     ///
     /// - `src_row_index`: row index to copy from
     /// - `dst_row_index`: row index to copy to
@@ -206,7 +208,11 @@ impl Gameboard {
     /// # Return Value
     ///
     /// Ok(()) if both indices are valid, Err(()) otherwise.
-    pub fn copy_row_into_row(&mut self, src_row_index: usize, dst_row_index: usize) -> Result<(), ()>{
+    pub fn copy_row_into_row(
+        &mut self,
+        src_row_index: usize,
+        dst_row_index: usize,
+    ) -> Result<(), ()> {
         for x in 0..self.width {
             self.set_content(x, dst_row_index, self.get_content(x, src_row_index))?
         }
@@ -229,59 +235,59 @@ impl Gameboard {
                     tex_coords: [0.0, 0.0],
                     color,
                     position: [
-                        ((x+GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32,
-                        ((y+GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32,
+                        ((x + GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32,
+                        ((y + GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32,
                         0.0,
-                    ]
+                    ],
                 };
-                buf[index+1] = Vertex {
+                buf[index + 1] = Vertex {
                     tex_coords: [1.0, 0.0],
                     color,
                     position: [
-                        ((x+GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
-                        ((y+GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32,
+                        ((x + GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
+                        ((y + GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32,
                         0.0,
-                    ]
+                    ],
                 };
-                buf[index+2] = Vertex {
+                buf[index + 2] = Vertex {
                     tex_coords: [1.0, 1.0],
                     color,
                     position: [
-                        ((x+GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
-                        ((y+GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
+                        ((x + GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
+                        ((y + GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
                         0.0,
-                    ]
+                    ],
                 };
-                buf[index+3] = Vertex {
+                buf[index + 3] = Vertex {
                     tex_coords: [1.0, 1.0],
                     color,
                     position: [
-                        ((x+GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
-                        ((y+GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
+                        ((x + GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
+                        ((y + GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
                         0.0,
-                    ]
+                    ],
                 };
-                buf[index+4] = Vertex {
+                buf[index + 4] = Vertex {
                     tex_coords: [0.0, 1.0],
                     color,
                     position: [
-                        ((x+GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32,
-                        ((y+GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
+                        ((x + GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32,
+                        ((y + GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32 + BLOCK_SIZE as f32,
                         0.0,
-                    ]
+                    ],
                 };
-                buf[index+5] = Vertex {
+                buf[index + 5] = Vertex {
                     tex_coords: [0.0, 0.0],
                     color,
                     position: [
-                        ((x+GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32,
-                        ((y+GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32,
+                        ((x + GAMEBOARD_OFFSET.0) as u32 * BLOCK_SIZE) as f32,
+                        ((y + GAMEBOARD_OFFSET.1) as u32 * BLOCK_SIZE) as f32,
                         0.0,
-                    ]
+                    ],
                 };
             } else {
                 use bytemuck::Zeroable;
-                buf[index..index+6].copy_from_slice(&[Vertex::zeroed(); 6]);
+                buf[index..index + 6].copy_from_slice(&[Vertex::zeroed(); 6]);
             }
         }
     }

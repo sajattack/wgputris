@@ -1,8 +1,8 @@
-use crate::Vertex;
 use crate::gameboard::Gameboard;
 use crate::tetromino::Tetromino;
-use crate::{BLOCK_SIZE, GAMEBOARD_OFFSET, GAMEBOARD_WIDTH, GAMEBOARD_HEIGHT};
-use winit::event::{KeyboardInput, VirtualKeyCode, ElementState};
+use crate::Vertex;
+use crate::{BLOCK_SIZE, GAMEBOARD_HEIGHT, GAMEBOARD_OFFSET, GAMEBOARD_WIDTH};
+use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 
 use rand::prelude::*;
 use std::time::Instant;
@@ -33,7 +33,7 @@ impl Game {
         next_shape.set_pos(30, 7);
 
         let mut current_shape = Tetromino::new_random(&mut rng);
-        let spawn_loc = gameboard.get_spawn_loc(); 
+        let spawn_loc = gameboard.get_spawn_loc();
         current_shape.set_pos(spawn_loc.0 as i32, spawn_loc.1 as i32);
 
         Self {
@@ -57,34 +57,32 @@ impl Game {
             (None, _) => {
                 return false;
             }
-            (Some(key), ElementState::Pressed) => {
-                match key {
-                    VirtualKeyCode::Left => {
-                        self.attempt_move(-1, 0);
-                        true
-                    },
-                    VirtualKeyCode::Right => {
-                        self.attempt_move(1, 0);
-                        true
-                    },
-                    VirtualKeyCode::Down => {
-                        self.drop();
-                        self.current_shape.lock_to_gameboard(&mut self.board);
-                        self.shape_placed = true;
-                        true
-                    },
-                    VirtualKeyCode::Z => {
-                        self.attempt_rotate_ccw();
-                        true
-                    },
-                    VirtualKeyCode::X => {
-                        self.attempt_rotate_cw();
-                        true
-                    }
-                    _ => {false}, 
+            (Some(key), ElementState::Pressed) => match key {
+                VirtualKeyCode::Left => {
+                    self.attempt_move(-1, 0);
+                    true
                 }
-            }
-            _ => {false},
+                VirtualKeyCode::Right => {
+                    self.attempt_move(1, 0);
+                    true
+                }
+                VirtualKeyCode::Down => {
+                    self.drop();
+                    self.current_shape.lock_to_gameboard(&mut self.board);
+                    self.shape_placed = true;
+                    true
+                }
+                VirtualKeyCode::Z => {
+                    self.attempt_rotate_ccw();
+                    true
+                }
+                VirtualKeyCode::X => {
+                    self.attempt_rotate_cw();
+                    true
+                }
+                _ => false,
+            },
+            _ => false,
         }
     }
 
@@ -121,7 +119,7 @@ impl Game {
     /// Setter for `score`
     ///
     /// # Parameters
-    /// 
+    ///
     /// - `score`: Score to set.
     pub fn set_score(&mut self, score: usize) {
         self.score = score;
@@ -140,15 +138,19 @@ impl Game {
     pub fn spawn_next_shape(&mut self) -> bool {
         self.current_shape = self.next_shape;
         let spawn_loc = self.board.get_spawn_loc();
-        self.current_shape.set_pos(spawn_loc.0 as i32, spawn_loc.1 as i32);
+        self.current_shape
+            .set_pos(spawn_loc.0 as i32, spawn_loc.1 as i32);
         self.is_position_legal(&self.current_shape)
     }
 
-    /// Picks the next Tetromino, sets it's position on the screen to be in the 
+    /// Picks the next Tetromino, sets it's position on the screen to be in the
     /// "Next Shape:" section
     pub fn pick_next_shape(&mut self) {
         self.next_shape = Tetromino::new_random(&mut self.rng);
-        self.next_shape.set_pos(self.next_shape_offset.0 as i32, self.next_shape_offset.1 as i32);
+        self.next_shape.set_pos(
+            self.next_shape_offset.0 as i32,
+            self.next_shape_offset.1 as i32,
+        );
     }
 
     /// Attempts to add to the `current_shape` position, returns true if successful.
@@ -201,9 +203,9 @@ impl Game {
         false
     }
 
-    /// Checks if the position of the given tetromino is within boundaries and does 
+    /// Checks if the position of the given tetromino is within boundaries and does
     /// not collide.
-    /// 
+    ///
     /// # Parameters
     ///
     /// - `shape`: `Tetromino` to check
@@ -212,8 +214,7 @@ impl Game {
     ///
     /// `true` if position is in bounds and does not collide
     pub fn is_position_legal(&self, shape: &Tetromino) -> bool {
-        self.is_shape_within_borders(shape) 
-        && !self.does_shape_intersect_locked_blocks(shape)
+        self.is_shape_within_borders(shape) && !self.does_shape_intersect_locked_blocks(shape)
     }
 
     /// Checks if the position of the given tetromino is within boundaries of the
@@ -229,9 +230,8 @@ impl Game {
     pub fn is_shape_within_borders(&self, shape: &Tetromino) -> bool {
         let mapped_locs = shape.get_mapped_locs();
         for p in mapped_locs.iter() {
-            if !(p.0 < GAMEBOARD_WIDTH 
-            && p.1 < GAMEBOARD_HEIGHT) {
-                return false
+            if !(p.0 < GAMEBOARD_WIDTH && p.1 < GAMEBOARD_HEIGHT) {
+                return false;
             }
         }
         true
@@ -242,7 +242,7 @@ impl Game {
     /// # Parameters
     ///
     /// `shape`: `Tetromino` to check
-    /// 
+    ///
     /// # Return Value
     ///
     /// `true` if shape collides
@@ -268,7 +268,8 @@ impl Game {
         };
         buf[1] = Vertex {
             position: [
-                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32
+                    + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
                 BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32,
                 -1.0,
             ],
@@ -277,8 +278,10 @@ impl Game {
         };
         buf[2] = Vertex {
             position: [
-                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
-                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32
+                    + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32
+                    + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
                 -1.0,
             ],
             tex_coords: [GAMEBOARD_WIDTH as f32, GAMEBOARD_HEIGHT as f32],
@@ -286,8 +289,10 @@ impl Game {
         };
         buf[3] = Vertex {
             position: [
-                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
-                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32
+                    + BLOCK_SIZE as f32 * GAMEBOARD_WIDTH as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32
+                    + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
                 -1.0,
             ],
             tex_coords: [GAMEBOARD_WIDTH as f32, GAMEBOARD_HEIGHT as f32],
@@ -296,7 +301,8 @@ impl Game {
         buf[4] = Vertex {
             position: [
                 BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.0 as f32,
-                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32 + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
+                BLOCK_SIZE as f32 * GAMEBOARD_OFFSET.1 as f32
+                    + BLOCK_SIZE as f32 * GAMEBOARD_HEIGHT as f32,
                 -1.0,
             ],
             tex_coords: [0.0, GAMEBOARD_HEIGHT as f32],
@@ -314,13 +320,10 @@ impl Game {
     }
 
     /// Returns renderable vertices to the main graphics api
-    pub fn render(
-        &self,
-        buf: &mut [Vertex],
-    ) {
-            self.render_background(&mut buf[0..6]);
-            self.board.as_vertices(&mut buf[6..1206]);
-            self.current_shape.as_vertices(&mut buf[1206..1230]);
-            self.next_shape.as_vertices(&mut buf[1230..1254]);
+    pub fn render(&self, buf: &mut [Vertex]) {
+        self.render_background(&mut buf[0..6]);
+        self.board.as_vertices(&mut buf[6..1206]);
+        self.current_shape.as_vertices(&mut buf[1206..1230]);
+        self.next_shape.as_vertices(&mut buf[1230..1254]);
     }
 }

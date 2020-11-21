@@ -5,16 +5,16 @@ use wgpu_glyph::{ab_glyph, GlyphBrushBuilder, Section, Text};
 
 use winit::{
     event::*,
-    event_loop::{EventLoop, ControlFlow},
+    event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
 
 use bytemuck::Zeroable;
 
-mod texture;
-mod gameboard;
 mod game;
+mod gameboard;
 mod tetromino;
+mod texture;
 
 const BLOCK_SIZE: u32 = 12;
 const GAMEBOARD_OFFSET: (usize, usize) = (15, 1);
@@ -25,9 +25,9 @@ const GAMEBOARD_HEIGHT: usize = 20;
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
-    pub position: [f32;3],
-    pub tex_coords: [f32;2],
-    pub color: [f32;4]
+    pub position: [f32; 3],
+    pub tex_coords: [f32; 2],
+    pub color: [f32; 4],
 }
 
 impl Vertex {
@@ -42,22 +42,22 @@ impl Vertex {
                     format: wgpu::VertexFormat::Float3,
                 },
                 wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32;3]>() as wgpu::BufferAddress,
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float2,
                 },
                 wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32;5]>() as wgpu::BufferAddress,
+                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float4,
-                }
-            ]
+                },
+            ],
         }
     }
 }
 
-unsafe impl bytemuck::Pod for Vertex{}
-unsafe impl bytemuck::Zeroable for Vertex{}
+unsafe impl bytemuck::Pod for Vertex {}
+unsafe impl bytemuck::Zeroable for Vertex {}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -71,19 +71,16 @@ impl Uniforms {
         let proj = cgmath::ortho(0.0, 480.0, 272.0, 0.0, -1.0, 1.0);
         let view = cgmath::Matrix4::identity();
         Self {
-            view_proj: OPENGL_TO_WGPU_MATRIX * proj * view
+            view_proj: OPENGL_TO_WGPU_MATRIX * proj * view,
         }
     }
 }
 
-unsafe impl bytemuck::Pod for Uniforms{}
-unsafe impl bytemuck::Zeroable for Uniforms{}
+unsafe impl bytemuck::Pod for Uniforms {}
+unsafe impl bytemuck::Zeroable for Uniforms {}
 
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.0,
-    0.0, 0.0, 0.5, 1.0,
+    1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0,
 );
 
 struct State {
@@ -107,21 +104,25 @@ impl State {
 
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
         let surface = unsafe { instance.create_surface(window) };
-        let adapter = instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::Default,
                 compatible_surface: Some(&surface),
-            }
-        ).await.unwrap();
+            })
+            .await
+            .unwrap();
 
-        let (device, queue) = adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
-                limits: wgpu::Limits::default(),
-                shader_validation: true,
-            },
-            None,
-        ).await.unwrap();
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::empty(),
+                    limits: wgpu::Limits::default(),
+                    shader_validation: true,
+                },
+                None,
+            )
+            .await
+            .unwrap();
 
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
@@ -132,14 +133,17 @@ impl State {
         };
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        let vs_module = device.create_shader_module(wgpu::include_spirv!("../shaders/shader.vert.spv"));
-        let fs_module = device.create_shader_module(wgpu::include_spirv!("../shaders/shader.frag.spv"));
+        let vs_module =
+            device.create_shader_module(wgpu::include_spirv!("../shaders/shader.vert.spv"));
+        let fs_module =
+            device.create_shader_module(wgpu::include_spirv!("../shaders/shader.frag.spv"));
 
         let diffuse_bytes = include_bytes!("../assets/block.png");
-        let diffuse_texture = texture::Texture::from_png_bytes(&device, &queue, diffuse_bytes, "block").unwrap();
+        let diffuse_texture =
+            texture::Texture::from_png_bytes(&device, &queue, diffuse_bytes, "block").unwrap();
 
-        let texture_bind_group_layout = device.create_bind_group_layout(
-            &wgpu::BindGroupLayoutDescriptor {
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -159,47 +163,40 @@ impl State {
                     },
                 ],
                 label: Some("texture_bind_group_layout"),
-            }
-        );
+            });
 
-        let diffuse_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
-                layout: &texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                    }
-                ],
-                label: Some("diffuse_bind_group"),
-            }
-        );
+        let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
+            label: Some("diffuse_bind_group"),
+        });
 
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(&[Vertex::zeroed();1254]),
-                usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
-            }
-        );
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(&[Vertex::zeroed(); 1254]),
+            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+        });
 
         let uniforms = Uniforms::new();
 
-        let uniform_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Uniform Buffer"),
-                contents: bytemuck::cast_slice(&[uniforms]),
-                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            }
-        );
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[uniforms]),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
 
-        let uniform_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
                     ty: wgpu::BindingType::UniformBuffer {
@@ -207,30 +204,25 @@ impl State {
                         min_binding_size: None,
                     },
                     count: None,
-                }
-            ],
-            label: Some("uniform_bind_group_layout"),
-        });
-        
+                }],
+                label: Some("uniform_bind_group_layout"),
+            });
+
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &uniform_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..))
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
+            }],
             label: Some("uniform_bind_group"),
         });
 
-        let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[
-                &texture_bind_group_layout,
-                &uniform_bind_group_layout
-            ],
-            push_constant_ranges: &[],
-        });
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
@@ -246,37 +238,31 @@ impl State {
                 entry_point: "main",
             }),
 
-            rasterization_state: Some(
-                wgpu::RasterizationStateDescriptor {
-                    front_face: wgpu::FrontFace::Cw,
-                    cull_mode: wgpu::CullMode::Back,
-                    depth_bias: 0,
-                    depth_bias_slope_scale: 0.0,
-                    depth_bias_clamp: 0.0,
-                    clamp_depth: false,
-                }
-            ),
+            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+                front_face: wgpu::FrontFace::Cw,
+                cull_mode: wgpu::CullMode::Back,
+                depth_bias: 0,
+                depth_bias_slope_scale: 0.0,
+                depth_bias_clamp: 0.0,
+                clamp_depth: false,
+            }),
 
-            color_states: &[
-                wgpu::ColorStateDescriptor {
-                    format: sc_desc.format,
-                    color_blend: wgpu::BlendDescriptor {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                    write_mask: wgpu::ColorWrite::ALL,
+            color_states: &[wgpu::ColorStateDescriptor {
+                format: sc_desc.format,
+                color_blend: wgpu::BlendDescriptor {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    operation: wgpu::BlendOperation::Add,
                 },
-            ],
+                alpha_blend: wgpu::BlendDescriptor::REPLACE,
+                write_mask: wgpu::ColorWrite::ALL,
+            }],
 
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             depth_stencil_state: None,
             vertex_state: wgpu::VertexStateDescriptor {
                 index_format: wgpu::IndexFormat::Uint16,
-                vertex_buffers: &[
-                    Vertex::desc(),
-                ],
+                vertex_buffers: &[Vertex::desc()],
             },
             sample_count: 1,
             sample_mask: !0,
@@ -284,12 +270,12 @@ impl State {
         });
 
         let staging_belt = wgpu::util::StagingBelt::new(1024);
-        let font = ab_glyph::FontArc::try_from_slice(include_bytes!("../assets/RedOctober.ttf")).expect("Load font");
+        let font = ab_glyph::FontArc::try_from_slice(include_bytes!("../assets/RedOctober.ttf"))
+            .expect("Load font");
 
-        let glyph_brush = GlyphBrushBuilder::using_font(font)
-            .build(&device, sc_desc.format);
+        let glyph_brush = GlyphBrushBuilder::using_font(font).build(&device, sc_desc.format);
 
-        let vertices: [Vertex; 1254] = [Vertex::zeroed();1254];
+        let vertices: [Vertex; 1254] = [Vertex::zeroed(); 1254];
 
         // This is kind of pointless because we reinitialize when we exit the menu
         // TODO should it be Option<Game> maybe?
@@ -312,9 +298,10 @@ impl State {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
-        if let WindowEvent::KeyboardInput{input, ..} = event {
-            
-            if  (*input).virtual_keycode == Some(VirtualKeyCode::Space) && (*input).state == ElementState::Pressed {
+        if let WindowEvent::KeyboardInput { input, .. } = event {
+            if (*input).virtual_keycode == Some(VirtualKeyCode::Space)
+                && (*input).state == ElementState::Pressed
+            {
                 self.game = game::Game::new();
                 self.menu = false;
             } else {
@@ -331,36 +318,38 @@ impl State {
     }
 
     fn render(&mut self) {
-        let frame = self.swap_chain.get_current_frame()
+        let frame = self
+            .swap_chain
+            .get_current_frame()
             .expect("Timeout getting texture")
             .output;
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[
-                    wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &frame.view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.2,
-                                g: 0.267,
-                                b: 0.333,
-                                a: 1.0,
-                            }),
-                            store: true,
-                        }
-                    }
-                ],
+                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                    attachment: &frame.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.2,
+                            g: 0.267,
+                            b: 0.333,
+                            a: 1.0,
+                        }),
+                        store: true,
+                    },
+                }],
                 depth_stencil_attachment: None,
             });
 
             if self.menu {
                 let menu_string = String::from(
-"Controls
+                    "Controls
 Left Arrow: Move tetromino left
 Right Arrow: Move tetromino right
 Down Arrow: Hard drop
@@ -369,22 +358,28 @@ X: Rotate tetromino clockwise
 Space: Start new game
 
 Press space to start
-");
+",
+                );
                 let menu_text = Section {
                     screen_position: (100.0, 100.0),
-                    text: vec![Text::new(&menu_string).with_scale(30.0).with_color([1.0, 1.0, 1.0, 1.0])],
+                    text: vec![Text::new(&menu_string)
+                        .with_scale(30.0)
+                        .with_color([1.0, 1.0, 1.0, 1.0])],
                     ..Section::default()
                 };
 
                 self.glyph_brush.queue(menu_text);
             } else {
-
                 render_pass.set_pipeline(&self.render_pipeline);
                 render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
                 render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
 
                 self.game.render(&mut self.vertices);
-                self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
+                self.queue.write_buffer(
+                    &self.vertex_buffer,
+                    0,
+                    bytemuck::cast_slice(&self.vertices),
+                );
                 render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                 render_pass.draw(0..self.vertices.len() as u32, 0..1);
 
@@ -411,26 +406,29 @@ Press space to start
                 let game_over_text = Section {
                     screen_position: (350.0, 250.0),
                     text: vec![Text::new(
-"Game Over.
-Press space to play again.")
-                        .with_scale(20.0)
-                        .with_color([1.0, 1.0, 1.0, 1.0])],
+                        "Game Over.
+Press space to play again.",
+                    )
+                    .with_scale(20.0)
+                    .with_color([1.0, 1.0, 1.0, 1.0])],
                     ..Section::default()
                 };
                 self.glyph_brush.queue(game_over_text);
             }
         }
-                self.glyph_brush.draw_queued(
-                    &self.device,
-                    &mut self.staging_belt,
-                    &mut encoder,
-                    &frame.view,
-                    960,
-                    544
-                ).expect("Draw queued");
+        self.glyph_brush
+            .draw_queued(
+                &self.device,
+                &mut self.staging_belt,
+                &mut encoder,
+                &frame.view,
+                960,
+                544,
+            )
+            .expect("Draw queued");
 
-            self.staging_belt.finish();
-            self.queue.submit(std::iter::once(encoder.finish()));
+        self.staging_belt.finish();
+        self.queue.submit(std::iter::once(encoder.finish()));
     }
 }
 
@@ -453,38 +451,33 @@ fn main() {
     //sink.play();
     //sink.detach();
 
-    event_loop.run(move |event, _, control_flow| {
-        match event {
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == window.id() =>  if !state.input(event) {
+    event_loop.run(move |event, _, control_flow| match event {
+        Event::WindowEvent {
+            ref event,
+            window_id,
+        } if window_id == window.id() => {
+            if !state.input(event) {
                 match event {
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::KeyboardInput {
-                        input,
-                        ..
-                    } => {
-                        match input {
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            } => *control_flow = ControlFlow::Exit,
-                            _ => {}
-                        }
-                    }
+                    WindowEvent::KeyboardInput { input, .. } => match input {
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Escape),
+                            ..
+                        } => *control_flow = ControlFlow::Exit,
+                        _ => {}
+                    },
                     _ => {}
                 }
             }
-            Event::RedrawRequested(_) => {
-                state.update();
-                state.render();
-            }
-            Event::MainEventsCleared => {
-                window.request_redraw();
-            }
-            _ => {}
         }
+        Event::RedrawRequested(_) => {
+            state.update();
+            state.render();
+        }
+        Event::MainEventsCleared => {
+            window.request_redraw();
+        }
+        _ => {}
     });
 }
