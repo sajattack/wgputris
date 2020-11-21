@@ -1,4 +1,4 @@
-//use std::io::Cursor;
+use std::io::Cursor;
 
 use wgpu::util::DeviceExt;
 use wgpu_glyph::{ab_glyph, GlyphBrushBuilder, Section, Text};
@@ -20,7 +20,7 @@ const BLOCK_SIZE: u32 = 12;
 const GAMEBOARD_OFFSET: (usize, usize) = (15, 1);
 const GAMEBOARD_WIDTH: usize = 10;
 const GAMEBOARD_HEIGHT: usize = 20;
-//const TETRIS_SONG: [u8; 410354] = *include_bytes!("../assets/tetris.ogg");
+const TETRIS_SONG: [u8; 410354] = *include_bytes!("../assets/tetris.ogg");
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -444,12 +444,12 @@ fn main() {
     use futures::executor::block_on;
     let mut state = block_on(State::new(&window));
 
-    //let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
-    //let source = rodio::Decoder::new_looped(Cursor::new(&TETRIS_SONG)).unwrap();
-    //let sink = rodio::Sink::try_new(&stream_handle).unwrap();
-    //sink.append(source);
-    //sink.play();
-    //sink.detach();
+    let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
+    let source = rodio::Decoder::new_looped(Cursor::new(&TETRIS_SONG)).unwrap();
+    let sink = rodio::Sink::try_new(&stream_handle).unwrap();
+    sink.append(source);
+    sink.play();
+    sink.detach();
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {

@@ -19,7 +19,7 @@ cpal = "0.13"
 rand = "0.7"
 
 [dependencies.rodio]
-version = "0.13"
+version = "0.12"
 default-features=false
 features=["vorbis"]
 
