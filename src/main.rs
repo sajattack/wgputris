@@ -98,6 +98,7 @@ struct State {
     glyph_brush: wgpu_glyph::GlyphBrush<()>,
     staging_belt: wgpu::util::StagingBelt,
     game: game::Game,
+    menu: bool,
 }
 
 impl State {
@@ -290,6 +291,8 @@ impl State {
 
         let vertices: [Vertex; 1254] = [Vertex::zeroed();1254];
 
+        // This is kind of pointless because we reinitialize when we exit the menu
+        // TODO should it be Option<Game> maybe?
         let game = game::Game::new();
 
         Self {
@@ -304,19 +307,27 @@ impl State {
             glyph_brush,
             staging_belt,
             game,
+            menu: true,
         }
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
         if let WindowEvent::KeyboardInput{input, ..} = event {
-            return self.game.process_input(*input);
+            
+            if  (*input).virtual_keycode == Some(VirtualKeyCode::Space) && (*input).state == ElementState::Pressed {
+                self.game = game::Game::new();
+                self.menu = false;
+            } else {
+                return self.game.process_input(*input);
+            }
         }
         false
     }
 
     fn update(&mut self) {
-        // TODO game start and game over
-        self.game.process_game_loop();
+        if !self.menu {
+            self.game.process_game_loop();
+        }
     }
 
     fn render(&mut self) {
@@ -347,42 +358,76 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+            if self.menu {
+                let menu_string = String::from(
+"Controls
+Left Arrow: Move tetromino left
+Right Arrow: Move tetromino right
+Down Arrow: Hard drop
+Z: Rotate tetromino counterclockwise
+X: Rotate tetromino clockwise
+Space: Start new game
 
-            self.game.render(&mut self.vertices);
-            self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.draw(0..self.vertices.len() as u32, 0..1);
+Press space to start
+");
+                let menu_text = Section {
+                    screen_position: (100.0, 100.0),
+                    text: vec![Text::new(&menu_string).with_scale(30.0).with_color([1.0, 1.0, 1.0, 1.0])],
+                    ..Section::default()
+                };
 
+                self.glyph_brush.queue(menu_text);
+            } else {
+
+                render_pass.set_pipeline(&self.render_pipeline);
+                render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+                render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
+
+                self.game.render(&mut self.vertices);
+                self.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&self.vertices));
+                render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+                render_pass.draw(0..self.vertices.len() as u32, 0..1);
+
+                let score_string = format!("Score: {}", self.game.get_score());
+                let score_text = Section {
+                    screen_position: (680.0, 80.0),
+                    text: vec![Text::new(&score_string).with_color([1.0, 1.0, 1.0, 1.0])],
+                    ..Section::default()
+                };
+
+                self.glyph_brush.queue(score_text);
+
+                let next_shape_text = Section {
+                    screen_position: (680.0, 120.0),
+
+                    text: vec![Text::new("Next Shape:").with_color([1.0, 1.0, 1.0, 1.0])],
+                    ..Section::default()
+                };
+
+                self.glyph_brush.queue(next_shape_text);
+            }
+
+            if self.game.game_over {
+                let game_over_text = Section {
+                    screen_position: (350.0, 250.0),
+                    text: vec![Text::new(
+"Game Over.
+Press space to play again.")
+                        .with_scale(20.0)
+                        .with_color([1.0, 1.0, 1.0, 1.0])],
+                    ..Section::default()
+                };
+                self.glyph_brush.queue(game_over_text);
+            }
         }
-            let score_string = format!("Score: {}", self.game.get_score());
-            let score_text = Section {
-                screen_position: (680.0, 80.0),
-                text: vec![Text::new(&score_string).with_color([1.0, 1.0, 1.0, 1.0])],
-                ..Section::default()
-            };
-
-            self.glyph_brush.queue(score_text);
-
-            let next_shape_text = Section {
-                screen_position: (680.0, 120.0),
-
-                text: vec![Text::new("Next Shape:").with_color([1.0, 1.0, 1.0, 1.0])],
-                ..Section::default()
-            };
-
-            self.glyph_brush.queue(next_shape_text);
-
-            self.glyph_brush.draw_queued(
-                &self.device,
-                &mut self.staging_belt,
-                &mut encoder,
-                &frame.view,
-                960,
-                544
-            ).expect("Draw queued");
+                self.glyph_brush.draw_queued(
+                    &self.device,
+                    &mut self.staging_belt,
+                    &mut encoder,
+                    &frame.view,
+                    960,
+                    544
+                ).expect("Draw queued");
 
             self.staging_belt.finish();
             self.queue.submit(std::iter::once(encoder.finish()));

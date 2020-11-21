@@ -19,6 +19,7 @@ pub struct Game {
     shape_placed: bool,
     rng: ThreadRng,
     last_loop_end: Instant,
+    pub game_over: bool,
 }
 
 impl Game {
@@ -46,6 +47,7 @@ impl Game {
             shape_placed: false,
             rng,
             last_loop_end: Instant::now(),
+            game_over: false,
         }
     }
 
@@ -88,10 +90,7 @@ impl Game {
 
     /// Called once per loop of the game, does all the biz.
     ///
-    /// # Return Value
-    ///
-    /// `true` if game is over
-    pub fn process_game_loop(&mut self) -> bool {
+    pub fn process_game_loop(&mut self) {
         let loop_start = Instant::now();
         self.seconds_since_tick += (loop_start - self.last_loop_end).as_secs_f64();
         if self.seconds_since_tick > self.seconds_per_tick {
@@ -100,8 +99,7 @@ impl Game {
         }
         if self.shape_placed {
             if !self.spawn_next_shape() {
-                // game over
-                return true;
+                self.game_over = true;
             } else {
                 self.pick_next_shape();
                 let rows_complete = self.board.remove_completed_rows();
@@ -110,7 +108,6 @@ impl Game {
             self.shape_placed = false;
         }
         self.last_loop_end = Instant::now();
-        false
     }
 
     /// Moves `current_shape` down 1 unit and locks to board if it collides.
